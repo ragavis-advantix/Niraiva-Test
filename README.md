@@ -19,41 +19,41 @@ The frontend is built with **Vite + React + TypeScript + Tailwind CSS + shadcn-u
 ```sh
 git clone https://github.com/ragavis-advantix/Niraiva-Test.git
 cd Niraiva-Test
+```
 
-Install dependencies:
-
+2. Install dependencies:
+```sh
 npm install
+```
 
-
-Start the development server:
-
+3. Start the development server:
+```sh
 npm run dev
-
+```
 
 This will open the app in your default browser with live reload.
 
-Local Proxy for File Uploads
+### Local Proxy for File Uploads
 
 A tiny Express server is provided to forward files to the n8n workflow.
 
-Install server dependencies:
-
+1. Install server dependencies:
+```sh
 cd server
 npm install express node-fetch@2 multer form-data cors
+```
 
-
-Start the proxy:
-
+2. Start the proxy:
+```sh
 node server/index.js
+```
 
+- Default listens on port 4000
+- Forwards files to http://localhost:5678/webhook/test
+- Override with N8N_WEBHOOK environment variable if needed
 
-Default listens on port 4000
-
-Forwards files to http://localhost:5678/webhook/test
-
-Override with N8N_WEBHOOK environment variable if needed
-
-Example frontend upload call
+### Example frontend upload call
+```javascript
 const input = document.querySelector('#file');
 const form = new FormData();
 form.append('file', input.files[0]);
@@ -65,12 +65,16 @@ const res = await fetch('http://localhost:4000/api/upload', {
 
 const json = await res.json();
 console.log('n8n returned:', json);
+```
 
-Backend: n8n Workflow
+---
+
+## Backend: n8n Workflow
 
 The backend workflow handles uploaded files and converts them into a structured health report schema.
 
-Workflow Overview
+### Workflow Overview
+```
 Frontend Upload
       │
       ▼
@@ -101,145 +105,123 @@ Send Final JSON Response
           │
           ▼
        Frontend
+```
 
-1️⃣ Entry Point: Receiving Files
+### 1️⃣ Entry Point: Receiving Files
 
-Node: Incoming File Webhook
+**Node:** Incoming File Webhook
 
-Type: Webhook
+- **Type:** Webhook
+- **Endpoint:** /test
+- **Accepts:** PDF, image, or JSON
+- **Purpose:** Entry point for uploaded files
 
-Endpoint: /test
+### 2️⃣ Detect File Type
 
-Accepts: PDF, image, or JSON
+**Node:** Detect Uploaded File Type
 
-Purpose: Entry point for uploaded files
+**Function:**
+- Reads the incoming file
+- Dynamically identifies binary key
+- Checks MIME type or file extension (pdf, image, json, text)
+- Returns a structured JSON object with fileType and binaryKey
 
-2️⃣ Detect File Type
+**Routing:**
+- PDF → PDF Processing
+- JSON → JSON Processing
+- Image → Image Processing
 
-Node: Detect Uploaded File Type
+### 3️⃣ File Processing Branch
 
-Function:
+#### PDF Processing
 
-Reads the incoming file
+**Node:** Extract Text from PDF
 
-Dynamically identifies binary key
+- **Function:** Extract textual content from PDF
+- **Next Step:** Send text to AI for structured analysis
 
-Checks MIME type or file extension (pdf, image, json, text)
+#### JSON Processing
 
-Returns a structured JSON object with fileType and binaryKey
+**Node:** Format Raw JSON Input
 
-Routing:
+- **Function:** Parse and clean JSON for AI analysis
+- **Next Step:** Send structured JSON to AI
 
-PDF → PDF Processing
+#### Image Processing
 
-JSON → JSON Processing
+**Node:** Convert Image to Base64 → OCR
 
-Image → Image Processing
+**Function:**
+- Convert image binary to Base64
+- Send to OCR.Space for text extraction
+- Send extracted text to AI for structured analysis
 
-3️⃣ File Processing Branch
-PDF Processing
+### 4️⃣ AI Structuring
 
-Node: Extract Text from PDF
+**Node:** AI Schema Structurer (Google Gemini / PaLM via LangChain)
 
-Function: Extract textual content from PDF
+**Function:**
+- Converts raw text or JSON into standardized health report schema
+- Captures:
+  - Patient profile: name, age, gender, blood type, allergies, etc.
+  - Clinical info: parameters, medications, appointments, conditions, immunizations, lifestyle
+- Adds deterministic notes for inferred data
 
-Next Step: Send text to AI for structured analysis
+### 5️⃣ Normalize AI Output
 
-JSON Processing
+**Node:** Normalize AI Output
 
-Node: Format Raw JSON Input
+**Function:**
+- Ensures JSON conforms to workflow schema
+- Missing values set to null
+- Adds extractedAt timestamp and status (success/failure)
 
-Function: Parse and clean JSON for AI analysis
+### 6️⃣ Respond to Webhook
 
-Next Step: Send structured JSON to AI
+**Node:** Send Final Health Report Response
 
-Image Processing
+- **Function:** Sends fully structured health report JSON back to the frontend
 
-Node: Convert Image to Base64 → OCR
+---
 
-Function:
+## Technologies Used
 
-Convert image binary to Base64
+- **Frontend:** Vite, React, TypeScript, Tailwind CSS, shadcn-ui
+- **Backend Proxy:** Node.js, Express
+- **Workflow:** n8n, Google Gemini (PaLM via LangChain), OCR.Space
 
-Send to OCR.Space for text extraction
+---
 
-Send extracted text to AI for structured analysis
+## How to Edit the Project
 
-4️⃣ AI Structuring
+### 1. Using your IDE
 
-Node: AI Schema Structurer (Google Gemini / PaLM via LangChain)
+1. Clone repo
+2. Install dependencies (`npm install`)
+3. Run locally (`npm run dev`)
+4. Push changes to GitHub → automatically reflected in the frontend
 
-Function:
+### 2. Editing on GitHub
 
-Converts raw text or JSON into standardized health report schema
+1. Navigate to the file
+2. Click the pencil icon to edit
+3. Commit changes
 
-Captures:
+### 3. Using GitHub Codespaces
 
-Patient profile: name, age, gender, blood type, allergies, etc.
+1. Click Code → Codespaces → New codespace
+2. Edit files and commit changes
 
-Clinical info: parameters, medications, appointments, conditions, immunizations, lifestyle
+---
 
-Adds deterministic notes for inferred data
-
-5️⃣ Normalize AI Output
-
-Node: Normalize AI Output
-
-Function:
-
-Ensures JSON conforms to workflow schema
-
-Missing values set to null
-
-Adds extractedAt timestamp and status (success/failure)
-
-6️⃣ Respond to Webhook
-
-Node: Send Final Health Report Response
-
-Function: Sends fully structured health report JSON back to the frontend
-
-Technologies Used
-
-Frontend: Vite, React, TypeScript, Tailwind CSS, shadcn-ui
-
-Backend Proxy: Node.js, Express
-
-Workflow: n8n, Google Gemini (PaLM via LangChain), OCR.Space
-
-How to Edit the Project
-1. Using your IDE
-
-Clone repo
-
-Install dependencies (npm install)
-
-Run locally (npm run dev)
-
-Push changes to GitHub → automatically reflected in the frontend
-
-2. Editing on GitHub
-
-Navigate to the file
-
-Click the pencil icon to edit
-
-Commit changes
-
-3. Using GitHub Codespaces
-
-Click Code → Codespaces → New codespace
-
-Edit files and commit changes
-
-Deployment
+## Deployment
 
 Currently deployable via local host for testing
 
-Notes
+---
 
-The frontend handles file uploads and displays structured health reports
+## Notes
 
-The Express proxy hides the n8n URL and allows server-side preprocessing
-
-The n8n workflow ensures every uploaded file is processed into a consistent health report JSON
+- The frontend handles file uploads and displays structured health reports
+- The Express proxy hides the n8n URL and allows server-side preprocessing
+- The n8n workflow ensures every uploaded file is processed into a consistent health report JSON
