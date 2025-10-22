@@ -73,6 +73,20 @@ console.log('n8n returned:', json);
 
 The backend workflow handles uploaded files and converts them into a structured health report schema.
 
+### Quick Setup
+
+**The complete n8n workflow is included in this repository as `Niraiva.json`.**
+
+To use it:
+
+1. Open your n8n instance (local or cloud)
+2. Click on **Workflows** → **Import from File**
+3. Select the `Niraiva.json` file from this repository
+4. Configure your credentials (Google Gemini API, OCR.Space API if needed)
+5. Activate the workflow
+
+The workflow will be ready to accept file uploads at the webhook endpoint `/test`.
+
 ### Workflow Overview
 ```
 Frontend Upload
@@ -106,6 +120,10 @@ Send Final JSON Response
           ▼
        Frontend
 ```
+
+### Detailed Workflow Documentation
+
+For a comprehensive understanding of how the workflow processes files and structures health data, refer to the workflow documentation sections below.
 
 ### 1️⃣ Entry Point: Receiving Files
 
@@ -225,3 +243,5 @@ Currently deployable via local host for testing
 - The frontend handles file uploads and displays structured health reports
 - The Express proxy hides the n8n URL and allows server-side preprocessing
 - The n8n workflow ensures every uploaded file is processed into a consistent health report JSON
+- **The `Niraiva.json` file contains the complete n8n workflow configuration** for easy import and setup
+- Comprehensive workflow documentation is provided in this README for better understanding of the data processing pipeline
