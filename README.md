@@ -1,123 +1,245 @@
-# Welcome to your Lovable project
+# Niraiva Health App
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/d4eecc4f-9187-4c0b-a149-f5b42bbdfe84
+This project consists of a **frontend** web application and a **backend workflow** powered by **n8n** for processing uploaded health files (PDF, image, JSON) into structured health reports.
 
-## How can I edit this code?
+- **Frontend URL (local dev)**: [http://localhost:5173](http://localhost:5173)  
+- **Backend Workflow**: n8n
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## Frontend: Local Setup
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d4eecc4f-9187-4c0b-a149-f5b42bbdfe84) and start prompting.
+The frontend is built with **Vite + React + TypeScript + Tailwind CSS + shadcn-ui**.
 
-Changes made via Lovable will be committed automatically to this repo.
+### Running locally
 
-````markdown
-# Welcome to your Lovable project
-
-## Project info
-
-**URL**: https://lovable.dev/projects/d4eecc4f-9187-4c0b-a149-f5b42bbdfe84
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/d4eecc4f-9187-4c0b-a149-f5b42bbdfe84) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+1. Clone the repository:
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/ragavis-advantix/Niraiva-Test.git
+cd Niraiva-Test
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Install dependencies:
 
-# Step 3: Install the necessary dependencies.
-npm i
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+
+Start the development server:
+
 npm run dev
-```
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This will open the app in your default browser with live reload.
 
-**Use GitHub Codespaces**
+Local Proxy for File Uploads
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+A tiny Express server is provided to forward files to the n8n workflow.
 
-## What technologies are used for this project?
+Install server dependencies:
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/d4eecc4f-9187-4c0b-a149-f5b42bbdfe84) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
-
-````
-
-## Local proxy for file uploads -> n8n
-
-A tiny Express proxy is provided at `server/index.js` to accept uploads from the frontend and forward the file to the configured n8n webhook. This is useful when you need to hide the n8n URL from the browser or add server-side processing.
-
-Start it with:
-
-```powershell
-# install server dependencies
 cd server
 npm install express node-fetch@2 multer form-data cors
-# then from project root run
+
+
+Start the proxy:
+
 node server/index.js
-```
 
-By default the server listens on port 4000 and forwards to `http://localhost:5678/webhook/test` (override with `N8N_WEBHOOK` env var).
 
-### Example frontend upload call
+Default listens on port 4000
 
-```js
-// send a file from a <input type="file" /> element
+Forwards files to http://localhost:5678/webhook/test
+
+Override with N8N_WEBHOOK environment variable if needed
+
+Example frontend upload call
 const input = document.querySelector('#file');
 const form = new FormData();
 form.append('file', input.files[0]);
 
 const res = await fetch('http://localhost:4000/api/upload', {
-	method: 'POST',
-	body: form,
+    method: 'POST',
+    body: form,
 });
 
 const json = await res.json();
 console.log('n8n returned:', json);
-```
 
-The proxy will return whatever n8n returns (JSON or text). If n8n extracts and returns JSON, the frontend will receive it and can visualize the values.
+Backend: n8n Workflow
+
+The backend workflow handles uploaded files and converts them into a structured health report schema.
+
+Workflow Overview
+Frontend Upload
+      │
+      ▼
+Local Express Proxy
+      │
+      ▼
+  Incoming Webhook (/test)
+      │
+      ▼
+Detect File Type
+      │
+  ┌───┴────┬────┴─────┐
+ PDF       JSON      Image
+  │         │         │
+Extract    Parse     Convert to Base64
+Text       & Clean   → OCR
+  │         │         │
+  └─────────┴─────────┘
+          │
+          ▼
+  AI Schema Structurer (Google Gemini / PaLM)
+          │
+          ▼
+ Normalize AI Output
+          │
+          ▼
+Send Final JSON Response
+          │
+          ▼
+       Frontend
+
+1️⃣ Entry Point: Receiving Files
+
+Node: Incoming File Webhook
+
+Type: Webhook
+
+Endpoint: /test
+
+Accepts: PDF, image, or JSON
+
+Purpose: Entry point for uploaded files
+
+2️⃣ Detect File Type
+
+Node: Detect Uploaded File Type
+
+Function:
+
+Reads the incoming file
+
+Dynamically identifies binary key
+
+Checks MIME type or file extension (pdf, image, json, text)
+
+Returns a structured JSON object with fileType and binaryKey
+
+Routing:
+
+PDF → PDF Processing
+
+JSON → JSON Processing
+
+Image → Image Processing
+
+3️⃣ File Processing Branch
+PDF Processing
+
+Node: Extract Text from PDF
+
+Function: Extract textual content from PDF
+
+Next Step: Send text to AI for structured analysis
+
+JSON Processing
+
+Node: Format Raw JSON Input
+
+Function: Parse and clean JSON for AI analysis
+
+Next Step: Send structured JSON to AI
+
+Image Processing
+
+Node: Convert Image to Base64 → OCR
+
+Function:
+
+Convert image binary to Base64
+
+Send to OCR.Space for text extraction
+
+Send extracted text to AI for structured analysis
+
+4️⃣ AI Structuring
+
+Node: AI Schema Structurer (Google Gemini / PaLM via LangChain)
+
+Function:
+
+Converts raw text or JSON into standardized health report schema
+
+Captures:
+
+Patient profile: name, age, gender, blood type, allergies, etc.
+
+Clinical info: parameters, medications, appointments, conditions, immunizations, lifestyle
+
+Adds deterministic notes for inferred data
+
+5️⃣ Normalize AI Output
+
+Node: Normalize AI Output
+
+Function:
+
+Ensures JSON conforms to workflow schema
+
+Missing values set to null
+
+Adds extractedAt timestamp and status (success/failure)
+
+6️⃣ Respond to Webhook
+
+Node: Send Final Health Report Response
+
+Function: Sends fully structured health report JSON back to the frontend
+
+Technologies Used
+
+Frontend: Vite, React, TypeScript, Tailwind CSS, shadcn-ui
+
+Backend Proxy: Node.js, Express
+
+Workflow: n8n, Google Gemini (PaLM via LangChain), OCR.Space
+
+How to Edit the Project
+1. Using your IDE
+
+Clone repo
+
+Install dependencies (npm install)
+
+Run locally (npm run dev)
+
+Push changes to GitHub → automatically reflected in the frontend
+
+2. Editing on GitHub
+
+Navigate to the file
+
+Click the pencil icon to edit
+
+Commit changes
+
+3. Using GitHub Codespaces
+
+Click Code → Codespaces → New codespace
+
+Edit files and commit changes
+
+Deployment
+
+Currently deployable via local host for testing
+
+Notes
+
+The frontend handles file uploads and displays structured health reports
+
+The Express proxy hides the n8n URL and allows server-side preprocessing
+
+The n8n workflow ensures every uploaded file is processed into a consistent health report JSON
