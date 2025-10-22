@@ -1,0 +1,493 @@
+{
+  "name": "Niraiva",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "id": "0a116961-64ad-42ea-ad8c-3d2d4b962f51",
+      "name": "Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        128,
+        560
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uGlF0apZN7ofhvhR",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/test",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "http://localhost:5173",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "d37f56a8-7af0-4f0c-9009-c0916bd7618f",
+      "name": "Incoming File Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1392,
+        432
+      ],
+      "webhookId": "8cacad02-41d9-4795-8344-43e116ba07bc"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Take the first incoming item\nconst item = items[0];\n\n// Detect binary key dynamically\nlet binaryKey = null;\nif (item.binary && Object.keys(item.binary).length > 0) {\n  binaryKey = Object.keys(item.binary)[0];\n}\n\n// Handle case: no binary data found\nif (!binaryKey) {\n  return [{\n    json: {\n      success: false,\n      message: \"No binary data found! Make sure the previous node outputs binary data.\",\n      hasBinary: !!item.binary\n    }\n  }];\n}\n\n// Extract binary file info\nconst bin = item.binary[binaryKey];\nconst mimeType = bin.mimeType || '';\nconst fileName = bin.fileName || 'unknown';\n\n// Determine file type (order matters - check json BEFORE text!)\nlet fileType = 'unknown';\nif (mimeType.includes('pdf')) {\n  fileType = 'pdf';\n} else if (mimeType.includes('image')) {\n  fileType = 'image';\n} else if (mimeType.includes('json') || fileName.toLowerCase().endsWith('.json')) {\n  fileType = 'json';\n} else if (mimeType.includes('text')) {\n  fileType = 'text';\n}\n\n// Return detected file info\nreturn [{\n  json: {\n    success: true,\n    mimeType,\n    fileName,\n    fileType,\n    binaryKey\n  },\n  binary: item.binary\n}];"
+      },
+      "id": "519f3a29-3b5c-4a2a-b2f6-7483ae682184",
+      "name": "Detect Uploaded File Type",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"fileType\"]}}",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "id": "b5910d4f-a5fb-4138-a356-9ad7da2a3b66",
+      "name": "If File is PDF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"fileType\"]}}",
+              "value2": "json"
+            }
+          ]
+        }
+      },
+      "id": "c3b0e642-532c-476f-b953-4d21cf8f1f51",
+      "name": "If File is JSON",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"fileType\"]}}",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "584d0f9e-89d6-4f4e-a228-6f6e4ef58d55",
+      "name": "If File is Image",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{$json[\"binaryKey\"]}}",
+        "options": {}
+      },
+      "id": "5a9c0eb8-a34f-4778-8778-311d44cf1ad6",
+      "name": "Extract Text from PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert to base64\nconst item = items[0];\nconst binaryKey = item.json.binaryKey;\nconst binaryData = item.binary[binaryKey];\n\nconst base64String = `data:${binaryData.mimeType};base64,${binaryData.data}`;\n\nreturn [{\n  json: { base64Image: base64String },\n  binary: item.binary\n}];"
+      },
+      "id": "4e059be6-7aa7-46c9-b634-23cb2cb3eba1",
+      "name": "Convert Image to Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr.space/parse/image",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "K81169456188957"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "language",
+              "value": "eng"
+            },
+            {
+              "name": "isOverlayRequired",
+              "value": "false"
+            },
+            {
+              "name": "base64Image",
+              "value": "={{ $json.base64Image }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "71d6a5dc-2633-4172-9e4c-4250429921d6",
+      "name": "Perform OCR on Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract and pass through JSON content\nconst item = items[0];\nconst binaryKey = item.json.binaryKey;\n\n// Try to get JSON from binary data\nlet jsonContent = null;\nif (item.binary && binaryKey && item.binary[binaryKey]) {\n  const binaryData = item.binary[binaryKey];\n  const textContent = Buffer.from(binaryData.data, 'base64').toString('utf-8');\n  try {\n    jsonContent = JSON.parse(textContent);\n  } catch (e) {\n    jsonContent = { error: 'Invalid JSON', raw: textContent };\n  }\n} else if (item.json.jsonInput) {\n  jsonContent = item.json.jsonInput;\n}\n\nreturn [{ json: jsonContent || item.json }];"
+      },
+      "id": "8f354aa8-26d7-4f39-920e-b8f1407c95b9",
+      "name": "Format Raw JSON Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a medical document analyzer. Your task is to read the input clinical text (or OCR text) and return EXACTLY one JSON object structured according to the schema below. You must be deterministic; do not hallucinate. If you normalize or infer data, include a clear \"note\" explaining exactly what you inferred and why.\n\nPay special attention to capturing blood type and allergies accurately.\n\nSchema:\n\n{\n  \"type\": \"health_report\",\n  \"metadata\": {\n    \"documentDate\": string | null,\n    \"patientId\": string | null,\n    \"documentType\": string | null,\n    \"provider\": string | null\n  },\n  \"data\": {\n    \"profile\": {\n      \"id\": string | null,\n      \"name\": string | null,\n      \"age\": number | null,\n      \"gender\": string | null,\n      \"height\": { \"value\": number | null, \"unit\": string | null } | null,\n      \"weight\": { \"value\": number | null, \"unit\": string | null } | null,\n      \"bmi\": number | null,\n      \"bloodType\": string | null,\n      \"emergencyContact\": string | null,\n      \"allergies\": string[] | null\n    },\n    \"parameters\": [\n      {\n        \"name\": string,\n        \"value\": number | string,\n        \"unit\": string | null,\n        \"status\": \"normal\" | \"warning\" | \"critical\",\n        \"timestamp\": string | null,\n        \"referenceRange\": {\n          \"low\": number | null,\n          \"high\": number | null,\n          \"unit\": string | null\n        } | null,\n        \"trend\": \"improving\" | \"stable\" | \"worsening\" | \"unknown\",\n        \"note\": string | null\n      }\n    ],\n    \"medications\": [\n      {\n        \"name\": string,\n        \"dosage\": string | null,\n        \"route\": string | null,\n        \"frequency\": string | null,\n        \"startDate\": string | null,\n        \"endDate\": string | null,\n        \"status\": \"active\" | \"discontinued\" | \"modified\" | null,\n        \"purpose\": string | null,\n        \"instructions\": string | null,\n        \"sideEffects\": string[] | null,\n        \"note\": string | null\n      }\n    ],\n    \"appointments\": [\n      {\n        \"date\": string | null,\n        \"title\": string | null,\n        \"description\": string | null,\n        \"type\": \"regular\" | \"emergency\" | \"follow-up\" | \"specialist\" | null,\n        \"status\": \"scheduled\" | \"completed\" | \"cancelled\" | null,\n        \"provider\": {\n          \"name\": string | null,\n          \"specialty\": string | null,\n          \"credentials\": string | null\n        } | null,\n        \"location\": string | null,\n        \"followUp\": {\n          \"required\": boolean | null,\n          \"timeframe\": string | null,\n          \"instructions\": string | null\n        } | null,\n        \"note\": string | null\n      }\n    ],\n    \"conditions\": [\n      {\n        \"name\": string,\n        \"icdCode\": string | null,\n        \"severity\": \"mild\" | \"moderate\" | \"severe\",\n        \"status\": \"controlled\" | \"partially-controlled\" | \"uncontrolled\",\n        \"onsetDate\": string | null,\n        \"relatedParameters\": string[] | null,\n        \"symptoms\": string[] | null,\n        \"riskFactors\": string[] | null,\n        \"complications\": string[] | null,\n        \"treatmentResponse\": \"good\" | \"fair\" | \"poor\" | \"unknown\",\n        \"notes\": string | null\n      }\n    ],\n    \"clinicalInfo\": {\n      \"allergies\": [\n        {\n          \"allergen\": string,\n          \"reaction\": string | null,\n          \"severity\": \"mild\" | \"moderate\" | \"severe\" | null,\n          \"note\": string | null\n        }\n      ],\n      \"immunizations\": [\n        {\n          \"vaccine\": string,\n          \"date\": string | null,\n          \"status\": \"completed\" | \"scheduled\" | null,\n          \"note\": string | null\n        }\n      ],\n      \"lifestyle\": {\n        \"diet\": string[] | null,\n        \"exercise\": string[] | null,\n        \"smoking\": \"never\" | \"current\" | \"former\" | null,\n        \"alcohol\": \"none\" | \"occasional\" | \"regular\" | null,\n        \"note\": string | null\n      }\n    }\n  },\n  \"extractedAt\": string | null,\n  \"processingStatus\": \"success\" | \"failure\"\n}\n\nInput text to analyze: {{ $json.ParsedResults[0].ParsedText }}, {{ $json.text }}\n\nInstructions:\n\n1. Extract and populate all fields whenever possible.\n2. Ensure blood type and allergies are captured accurately.\n3. Include notes for any inferred or normalized information.\n4. Do not omit any fields; use null if data is unavailable.\n5. Return a single JSON object that fully conforms to the schema.\n",
+        "options": {
+          "systemMessage": "You are a medical document analyzer. Your task is to read input clinical text (or OCR text) and return EXACTLY one JSON object matching the schema and rules below. Be deterministic; do not hallucinate. If you must infer or normalize, add a \"note\" explaining exactly what you inferred and why.\n\nStep 1 — Classify Document Type\n\nIf the text primarily contains patient demographics/profile (name, age, gender, height, weight, BMI, blood type, emergency contact, allergies), treat it as a \"Patient Profile\".\n\nSet metadata.documentType = \"Patient Profile\"\n\nPopulate only data.profile and data.clinicalInfo (allergy entries)\n\nLeave parameters, conditions, medications, appointments as empty arrays\n\nOtherwise, treat it as a clinical \"health_report\" with medical findings (labs, vitals, diagnoses, meds, appointments), and populate appropriate fields.\n\nCritical Field Extraction Rules\n\n1. Blood Type\n\nPatterns: A+, A-, B+, B-, O+, O-, AB+, AB-\n\nCommon variations: \"Blood Group:\", \"Blood Type:\", \"BT:\"\n\nUse the most recent if multiple occurrences\n\nSet to null if no clear type found\n\n2. Allergies\n\nLook for sections labeled \"Allergies:\", \"Known Allergies:\", \"Allergic to:\"\n\nInclude food, drug, and environmental allergies\n\nReturn as an array of strings, each allergy separate\n\nRemove duplicates and standardize spelling\n\nCorrect common OCR errors: \"allergies\" → \"allergies\", \"alergic\" → \"allergic\"\n\nSet to null if no allergies mentioned\n\nNormalization & Mapping Rules\n\nDates: ISO YYYY-MM-DD (or ISO datetime if time present). If only month/year, use YYYY-MM-01 and add a \"note\"\n\nUnits: prefer metric (kg, cm, mmHg, mg/dL). Convert if possible and add note if conversion applied\n\nBlood pressure: \"120/80\" → value \"120/80\" and unit \"mmHg\"\n\nStatus mapping:\n\nnormal: [\"normal\", \"within normal\", \"WNL\"]\n\nwarning: [\"elevated\", \"high\", \"borderline\", \"abnormal\", \"mildly high\"]\n\ncritical: [\"critical\", \"severe\", \"very high\", \"life-threatening\"]\n\nSeverity mapping: mild / moderate / severe (default \"moderate\" if missing)\n\nIf multiple values present for the same parameter, include separate entries with timestamps when available; otherwise include most recent and document multiplicity in \"note\"\n\nIf a field is missing, set to null. Do not invent values\n\nGeneral Rules\n\nArrays must always be arrays, even if empty\n\nReturn null for missing values, not empty strings\n\nDo not wrap output in markdown, code fences, or additional wrapper objects\n\nFirst character must be { and last must be }\n\nReturn only one JSON object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        416
+      ],
+      "id": "6209974b-9d4e-49e7-8287-c5f762c1634b",
+      "name": "AI Schema Structurer"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = items[0];\nlet parsedData = {\n  type: \"health_report\",\n  metadata: {\n    documentDate: null,\n    patientId: null,\n    documentType: null,\n    provider: null\n  },\n  data: {\n    profile: null,\n    parameters: [],\n    medications: [],\n    appointments: [],\n    conditions: [],\n    clinicalInfo: {\n      allergies: [],\n      immunizations: [],\n      lifestyle: null\n    }\n  },\n  extractedAt: new Date().toISOString(),\n  processingStatus: \"failure\"\n};\n\ntry {\n  let aiResponse = '';\n  \n  if (item.json.output) {\n    aiResponse = item.json.output;\n  } else if (item.json.text) {\n    aiResponse = item.json.text;\n  } else if (item.json.response) {\n    aiResponse = item.json.response;\n  } else {\n    aiResponse = JSON.stringify(item.json);\n  }\n  \n  const jsonMatch = aiResponse.match(/```json\\s*([\\s\\S]*?)```/) || \n                   aiResponse.match(/```\\s*([\\s\\S]*?)```/) ||\n                   aiResponse.match(/\\{[\\s\\S]*\\}/);\n  \n  if (jsonMatch) {\n    const extracted = JSON.parse((jsonMatch[1] || jsonMatch[0]).trim());\n    \n    if (extracted.metadata) {\n      Object.assign(parsedData.metadata, extracted.metadata);\n    }\n    \n    if (extracted.data) {\n      parsedData.data.parameters = Array.isArray(extracted.data.parameters) ? extracted.data.parameters : [];\n      parsedData.data.medications = Array.isArray(extracted.data.medications) ? extracted.data.medications : [];\n      parsedData.data.appointments = Array.isArray(extracted.data.appointments) ? extracted.data.appointments : [];\n      parsedData.data.conditions = Array.isArray(extracted.data.conditions) ? extracted.data.conditions : [];\n      \n      if (extracted.data.profile) {\n        parsedData.data.profile = {\n          id: extracted.data.profile.id || null,\n          name: extracted.data.profile.name || null,\n          age: typeof extracted.data.profile.age === 'number' ? extracted.data.profile.age : null,\n          gender: extracted.data.profile.gender || null,\n          height: extracted.data.profile.height || null,\n          weight: extracted.data.profile.weight || null,\n          bmi: typeof extracted.data.profile.bmi === 'number' ? extracted.data.profile.bmi : null,\n          bloodType: extracted.data.profile.bloodType || null,\n          emergencyContact: extracted.data.profile.emergencyContact || null,\n          allergies: Array.isArray(extracted.data.profile.allergies) ? extracted.data.profile.allergies : null\n        };\n      }\n      \n      if (extracted.data.clinicalInfo) {\n        parsedData.data.clinicalInfo = {\n          allergies: Array.isArray(extracted.data.clinicalInfo.allergies) ? extracted.data.clinicalInfo.allergies : [],\n          immunizations: Array.isArray(extracted.data.clinicalInfo.immunizations) ? extracted.data.clinicalInfo.immunizations : [],\n          lifestyle: extracted.data.clinicalInfo.lifestyle || null\n        };\n      }\n    }\n    \n    parsedData.processingStatus = \"success\";\n  }\n} catch (error) {\n  console.error('Format Response Error:', error);\n}\n\nreturn [{ json: parsedData }];"
+      },
+      "id": "a58e7f2f-289e-44d7-ab8d-d554050e5ff7",
+      "name": "Normalize AI Output",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        416,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "61b11244-0e8b-49b7-88a4-e2d6a929787a",
+      "name": "Send Final Health Report Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        768,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "content": "🟩 📥 File Intake & Type Detection\n\nContent:\nReceives file uploads (PDF, image, JSON) from the frontend.\nDetects file type automatically and routes to the correct processing branch:\n\n📄 PDF → Extract Text\n\n🖼️ Image → OCR + AI\n\n🧾 JSON → Direct Parsing\n\nPurpose: Entry point and router for the workflow, ensuring proper processing for each file type.",
+        "height": 464,
+        "width": 480
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1456,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "70599a1a-5615-4119-8860-9f5a2fe0e72c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Title: 📄 PDF Processing Branch\nContent:\nHandles PDF uploads.\n\nExtracts text from PDF using the Extract PDF Text node.\n\nSends the extracted text to the AI Agent (Gemini model).\n\nAI returns a structured health report JSON.",
+        "height": 352,
+        "width": 432,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        208
+      ],
+      "typeVersion": 1,
+      "id": "392a57bb-0b4f-4b07-b722-4a99cde45d85",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Title: 🖼️ Image → OCR → AI Processing\nContent:\nHandles image-based uploads (e.g., scanned lab results).\n\nConverts binary image to base64.\n\nSends base64 string to OCR.Space for text extraction.\n\nExtracted text is passed to the AI Agent (Gemini) for structured analysis.",
+        "height": 368,
+        "width": 576,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -688,
+        656
+      ],
+      "typeVersion": 1,
+      "id": "f371474f-5e0c-4698-8941-dbee0cef4056",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Title: 🧾 JSON Input Processing\nContent:\nHandles JSON uploads directly (no text extraction).\n\nParses binary or raw JSON input.\n\nCleans & formats data for AI analysis.\n\nSends the structured text to AI Agent.",
+        "height": 336,
+        "width": 496,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -656,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "8b8b2260-0f06-40de-ae81-1b74206e5c15",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "🟦 🤖 AI Processing & Response Formatting\n\nContent:\n\nUses Google Gemini AI to structure extracted text or JSON into the standardized health_report schema.\n\nEnsures deterministic, validated output:\n\nNormalizes nested fields\n\nAdds extractedAt timestamp\n\nSets processingStatus (success/failure)\n\nPrepares data for final webhook response.\n\nPurpose: Converts raw text/JSON into a clean, schema-compliant health report.",
+        "height": 656,
+        "width": 464,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "3ae9569e-80cc-4c57-b3fd-d2e8f21fc866",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Schema Structurer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incoming File Webhook": {
+      "main": [
+        [
+          {
+            "node": "Detect Uploaded File Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Uploaded File Type": {
+      "main": [
+        [
+          {
+            "node": "If File is JSON",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If File is PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If File is Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File is PDF": {
+      "main": [
+        [
+          {
+            "node": "Extract Text from PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File is JSON": {
+      "main": [
+        [
+          {
+            "node": "Format Raw JSON Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If File is Image": {
+      "main": [
+        [
+          {
+            "node": "Convert Image to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text from PDF": {
+      "main": [
+        [
+          {
+            "node": "AI Schema Structurer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Image to Base64": {
+      "main": [
+        [
+          {
+            "node": "Perform OCR on Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perform OCR on Image": {
+      "main": [
+        [
+          {
+            "node": "AI Schema Structurer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Raw JSON Input": {
+      "main": [
+        [
+          {
+            "node": "Normalize AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Schema Structurer": {
+      "main": [
+        [
+          {
+            "node": "Normalize AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize AI Output": {
+      "main": [
+        [
+          {
+            "node": "Send Final Health Report Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f78c0c5d-8113-411e-a56d-34d084ab7b04",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0e8a96411490a6f840e0e62cee6e0188f0ec48dd5020a02e059bae62c3c86f0c"
+  },
+  "id": "oGDt7ye1WjlNY2NS",
+  "tags": []
+}
