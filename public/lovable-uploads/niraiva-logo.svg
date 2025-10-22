@@ -1,0 +1,70 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <style>
+    .logo-text { 
+      font-family: Arial, sans-serif; 
+      font-weight: bold; 
+      fill: #00a7b5;
+    }
+  </style>
+  
+  <!-- Main circular border -->
+  <circle cx="250" cy="250" r="220" fill="none" stroke="#00a7b5" stroke-width="4"/>
+  
+  <!-- Inner circle -->
+  <circle cx="250" cy="250" r="190" fill="none" stroke="#00a7b5" stroke-width="3"/>
+  
+  <!-- Head profile outline -->
+  <path 
+    d="M190,310 
+    L190,240 
+    C190,240 195,210 205,200 
+    L230,190 
+    C230,190 245,240 280,200
+    C280,200 300,220 310,230
+    C310,230 330,300 300,330
+    L280,330
+    L255,335
+    L230,330
+    L210,320
+    L190,310Z" 
+    fill="none" 
+    stroke="#00a7b5" 
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Heart design -->
+  <path 
+    d="M240,220 
+    C260,180 300,200 300,230
+    C300,260 270,280 250,300
+    C230,280 200,260 200,230
+    C200,200 220,180 240,220Z" 
+    fill="none" 
+    stroke="#00a7b5" 
+    stroke-width="4"
+  />
+  
+  <!-- Circle in heart -->
+  <circle cx="250" cy="240" r="10" fill="none" stroke="#00a7b5" stroke-width="4"/>
+  
+  <!-- Medical cross in circle -->
+  <circle cx="280" cy="300" r="20" fill="none" stroke="#00a7b5" stroke-width="4"/>
+  <path d="M270 300 H290 M280 290 V310" stroke="#00a7b5" stroke-width="4"/>
+  
+  <!-- Text around the circle - top -->
+  <path id="top-text-path" d="M250,60 a190,190 0 0,1 0,380 a190,190 0 0,1 0,-380" fill="none"/>
+  
+  <!-- Text around the circle - bottom -->
+  <path id="bottom-text-path" d="M250,440 a190,190 0 0,1 0,-380 a190,190 0 0,1 0,380" fill="none"/>
+  
+  <text class="logo-text" font-size="40">
+    <textPath href="#top-text-path" startOffset="50%" text-anchor="middle">NIRAIVA</textPath>
+  </text>
+  
+  <text class="logo-text" font-size="24">
+    <textPath href="#bottom-text-path" startOffset="50%" text-anchor="middle">PREVENT HEAL HEALTHY</textPath>
+  </text>
+</svg>

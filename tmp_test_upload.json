@@ -1,0 +1,6 @@
+{
+    "patient": "John Doe",
+    "age": 45,
+    "blood_pressure": "130/85",
+    "notes": "Test upload from local proxy"
+}
